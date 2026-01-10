@@ -5,6 +5,7 @@ import { TeacherSignUpScreen } from './components/TeacherSignUpScreen';
 import { AdminLoginScreen } from './components/AdminLoginScreen';
 import { TeacherDashboard } from './components/web/TeacherDashboard';
 import { PrincipalDashboard } from './components/web/PrincipalDashboard';
+import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
 
 type Screen = 'loading' | 'teacher-login' | 'teacher-signup' | 'admin-login' | 'password-recovery' | 'teacher-dashboard' | 'principal-dashboard';
 
@@ -19,8 +20,8 @@ export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null);
 
   useEffect(() => {
-    window.addEventListener('resize', () => {});
-    return () => window.removeEventListener('resize', () => {});
+    window.addEventListener('resize', () => { });
+    return () => window.removeEventListener('resize', () => { });
   }, []);
 
   useEffect(() => {
@@ -31,6 +32,23 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [currentScreen]);
+  const handleSendResetLink = (email: string) => {
+    alert("A password reset link has been sent to: " + email);
+    setCurrentScreen("teacher-login");
+  };
+
+  const handleBackToLogin = () => {
+    setCurrentScreen("teacher-login");
+  };
+  if (currentScreen === 'password-recovery') {
+    return (
+      <PasswordRecoveryScreen
+        onSendResetLink={handleSendResetLink}
+        onBackToLogin={handleBackToLogin}
+      />
+    );
+  }
+
 
   const handleSignUp = (data: any) => {
     const role = data.role || 'teacher';
@@ -81,7 +99,8 @@ export default function App() {
     });
     setCurrentScreen('teacher-dashboard');
   };
-  const handleAdminLogin = (email: string) => {
+  // Update the handleAdminLogin function in App.tsx
+  const handleAdminLogin = (email: string, token: string) => {
     const name = email.includes('@') ? email.split('@')[0] : email;
     setUserData({
       name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -108,7 +127,6 @@ export default function App() {
     if (currentScreen === 'teacher-signup') {
       return (
         <TeacherSignUpScreen
-          onSignUp={handleSignUp}
           onNavigateToLogin={handleNavigateToTeacherLogin}
         />
       );
@@ -131,8 +149,8 @@ export default function App() {
     return <LoadingScreen />;
   };
 
-  const shouldShowWebView = 
-    currentScreen === 'teacher-dashboard' || 
+  const shouldShowWebView =
+    currentScreen === 'teacher-dashboard' ||
     currentScreen === 'principal-dashboard' ||
     currentScreen === 'teacher-login' ||
     currentScreen === 'teacher-signup' ||

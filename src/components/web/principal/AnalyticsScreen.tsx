@@ -68,11 +68,11 @@ export function AnalyticsScreen() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
               <p className="text-muted-foreground mb-1">Model Name</p>
-              <p className="text-foreground">UNet</p>
+              <p className="text-foreground">UNet-3d</p>
             </div>
             <div>
               <p className="text-muted-foreground mb-1">Last Updated</p>
-              <p className="text-foreground">Oct 1, 2024</p>
+              <p className="text-foreground">Oct 1, 2025</p>
             </div>
             <div>
               <p className="text-muted-foreground mb-1">Training Dataset</p>

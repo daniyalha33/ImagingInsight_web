@@ -43,8 +43,8 @@ export function TeacherChatScreen({ teacherName }: TeacherChatScreenProps) {
     <div className="h-full flex bg-blue-50">
       {/* Student List */}
       <div className="w-80 border-r border-blue-200 bg-white flex flex-col">
-        <div className="p-4 border-b border-blue-200 bg-blue-600">
-          <h3 className="text-white text-lg font-semibold mb-2">Student Queries</h3>
+        <div className="p-4 border-b border-blue-200">
+          <h3 className="text-blue-600 text-lg font-semibold mb-2">Student Queries</h3>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-100" />
             <Input

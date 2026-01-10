@@ -91,24 +91,33 @@ export function StudentPerformanceScreen() {
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!studentToDelete} onOpenChange={() => setStudentToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Student</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete this student from the system? This action cannot be undone and will remove all their data, progress, and assessments.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteStudent}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Delete Student
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+  <AlertDialogContent className="bg-white rounded-xl shadow-lg">
+    <AlertDialogHeader>
+      <AlertDialogTitle className="text-gray-900">
+        Delete Student
+      </AlertDialogTitle>
+
+      <AlertDialogDescription className="text-gray-600">
+        Are you sure you want to delete this student from the system? This action cannot be undone
+        and will remove all their data, progress, and assessments.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel className="text-gray-600 hover:bg-gray-100">
+        Cancel
+      </AlertDialogCancel>
+
+      <AlertDialogAction
+        onClick={handleDeleteStudent}
+        className="bg-red-600 hover:bg-red-700 text-white"
+      >
+        Delete Student
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
       </div>
     </div>
   );
