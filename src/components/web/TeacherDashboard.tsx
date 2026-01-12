@@ -2,13 +2,9 @@ import { useState } from 'react';
 import { 
   Users, 
   MessageSquare, 
-  FileText, 
-  ClipboardList, 
-  BarChart3, 
-  Plus,
   LogOut,
   Home,
-  Settings
+  ClipboardList
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { TeacherClassesScreen } from './teacher/TeacherClassesScreen';
@@ -30,6 +26,15 @@ type Screen =
 
 export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: TeacherDashboardProps) {
   const [screen, setScreen] = useState<Screen>({ type: 'classes' });
+
+  const handleTestCreated = () => {
+    // After test is created, go back to class detail
+    if (screen.type === 'create-test' && screen.classId) {
+      setScreen({ type: 'class-detail', classId: screen.classId });
+    } else {
+      setScreen({ type: 'classes' });
+    }
+  };
 
   const renderScreen = () => {
     switch (screen.type) {
@@ -57,11 +62,12 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
       case 'create-test':
         return (
           <CreateTestScreen
-            classId={screen.classId}
+            classId={screen.classId || ''}
             onBack={() => screen.classId 
               ? setScreen({ type: 'class-detail', classId: screen.classId })
               : setScreen({ type: 'classes' })
             }
+            onSuccess={handleTestCreated}
           />
         );
       default:
@@ -80,8 +86,8 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
               <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-blue-900">ImagingInsight</h2>
-              <p className="text-muted-foreground">Teacher Portal</p>
+              <h2 className="text-lg font-semibold text-blue-900">ImagingInsight</h2>
+              <p className="text-sm text-gray-500">Teacher Portal</p>
             </div>
           </div>
         </div>
@@ -91,7 +97,7 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
           <Button
             variant={screen.type === 'classes' ? 'default' : 'ghost'}
             className={`w-full justify-start ${
-              screen.type === 'classes' ? 'bg-blue-600 text-white' : 'text-blue-900'
+              screen.type === 'classes' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-blue-900 hover:bg-blue-50'
             }`}
             onClick={() => setScreen({ type: 'classes' })}
           >
@@ -101,7 +107,7 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
           <Button
             variant={screen.type === 'chat' ? 'default' : 'ghost'}
             className={`w-full justify-start ${
-              screen.type === 'chat' ? 'bg-blue-600 text-white' : 'text-blue-900'
+              screen.type === 'chat' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-blue-900 hover:bg-blue-50'
             }`}
             onClick={() => setScreen({ type: 'chat' })}
           >
@@ -109,27 +115,26 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
             Student Queries
           </Button>
           <Button
-              variant={screen.type === 'create-test' ? 'default' : 'ghost'}
-              className={`w-full justify-start ${
-                screen.type === 'create-test' ? 'bg-blue-600 text-white' : 'text-blue-900'
-              }`}
-              onClick={() => setScreen({ type: 'create-test' })}
-            >
-              <ClipboardList className="w-4 h-4 mr-3" />
-              Create Assessment
-            </Button>
-
+            variant={screen.type === 'create-test' ? 'default' : 'ghost'}
+            className={`w-full justify-start ${
+              screen.type === 'create-test' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-blue-900 hover:bg-blue-50'
+            }`}
+            onClick={() => setScreen({ type: 'create-test' })}
+          >
+            <ClipboardList className="w-4 h-4 mr-3" />
+            Create Assessment
+          </Button>
         </nav>
 
         {/* User Info & Logout */}
         <div className="p-4 border-t border-blue-100">
           <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-            <p className="text-blue-900">{teacherName}</p>
-            <p className="text-muted-foreground">{teacherEmail}</p>
+            <p className="text-sm font-medium text-blue-900">{teacherName}</p>
+            <p className="text-xs text-gray-500 truncate">{teacherEmail}</p>
           </div>
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full border-blue-200 text-blue-900 hover:bg-blue-50"
             onClick={onLogout}
           >
             <LogOut className="w-4 h-4 mr-2" />
@@ -139,7 +144,7 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-hidden">
         {renderScreen()}
       </div>
     </div>

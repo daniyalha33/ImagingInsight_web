@@ -10,14 +10,18 @@ import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
 type Screen = 'loading' | 'teacher-login' | 'teacher-signup' | 'admin-login' | 'password-recovery' | 'teacher-dashboard' | 'principal-dashboard';
 
 interface UserData {
+  id: string;
   name: string;
   email: string;
   role: string;
+  isApproved: boolean;
+  profileImage?: string;
 }
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('loading');
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [token, setToken] = useState<string>('');
 
   useEffect(() => {
     window.addEventListener('resize', () => { });
@@ -26,12 +30,37 @@ export default function App() {
 
   useEffect(() => {
     if (currentScreen === 'loading') {
-      const timer = setTimeout(() => {
-        setCurrentScreen('teacher-login');
-      }, 1500);
-      return () => clearTimeout(timer);
+      // Check if user is already logged in
+      const savedToken = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+
+      if (savedToken && savedUser) {
+        try {
+          const user = JSON.parse(savedUser);
+          setToken(savedToken);
+          setUserData(user);
+          
+          // Navigate to appropriate dashboard based on role
+          if (user.role === 'admin') {
+            setCurrentScreen('principal-dashboard');
+          } else if (user.role === 'teacher') {
+            setCurrentScreen('teacher-dashboard');
+          } else {
+            setCurrentScreen('teacher-login');
+          }
+        } catch (error) {
+          console.error('Error parsing saved user data:', error);
+          setCurrentScreen('teacher-login');
+        }
+      } else {
+        const timer = setTimeout(() => {
+          setCurrentScreen('teacher-login');
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
     }
   }, [currentScreen]);
+
   const handleSendResetLink = (email: string) => {
     alert("A password reset link has been sent to: " + email);
     setCurrentScreen("teacher-login");
@@ -40,6 +69,7 @@ export default function App() {
   const handleBackToLogin = () => {
     setCurrentScreen("teacher-login");
   };
+
   if (currentScreen === 'password-recovery') {
     return (
       <PasswordRecoveryScreen
@@ -49,64 +79,55 @@ export default function App() {
     );
   }
 
-
-  const handleSignUp = (data: any) => {
-    const role = data.role || 'teacher';
-    if (role === 'teacher') {
-      alert('Your teacher registration request has been submitted. An admin will review it shortly.');
-      setCurrentScreen('teacher-login');
-      return;
-    }
-    if (role === 'principal') {
-      alert('Your principal registration request has been submitted for review.');
-      setCurrentScreen('teacher-login');
-      return;
-    }
-    setUserData({
-      name: data.name,
-      email: data.email,
-      role: role
-    });
-    setCurrentScreen('teacher-dashboard');
-  };
-
   const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Clear state
     setUserData(null);
+    setToken('');
     setCurrentScreen('teacher-login');
   };
 
   const handleNavigateToPasswordRecovery = () => {
     setCurrentScreen('password-recovery');
   };
+
   const handleSwitchToTeacherLogin = () => {
     setCurrentScreen('teacher-login');
   };
+
   const handleNavigateToTeacherSignUp = () => {
     setCurrentScreen('teacher-signup');
   };
+
   const handleNavigateToTeacherLogin = () => {
     setCurrentScreen('teacher-login');
   };
+
   const handleSwitchToAdminLogin = () => {
     setCurrentScreen('admin-login');
   };
-  const handleTeacherLogin = (email: string) => {
-    const name = email.includes('@') ? email.split('@')[0] : email;
-    setUserData({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      email: email.includes('@') ? email : `${email}@imaginginsight.com`,
-      role: 'teacher'
-    });
+
+  // Teacher Login - receives user and token from backend
+  const handleTeacherLogin = (user: UserData, authToken: string) => {
+    setUserData(user);
+    setToken(authToken);
     setCurrentScreen('teacher-dashboard');
   };
-  // Update the handleAdminLogin function in App.tsx
-  const handleAdminLogin = (email: string, token: string) => {
+
+  // Admin Login - receives email and token from backend
+  const handleAdminLogin = (email: string, authToken: string) => {
     const name = email.includes('@') ? email.split('@')[0] : email;
     setUserData({
+      id: '', // Set appropriately if you have an id
       name: name.charAt(0).toUpperCase() + name.slice(1),
       email: email.includes('@') ? email : `${email}@imaginginsight.com`,
-      role: 'principal'
+      role: 'principal',
+      isApproved: true
     });
+    setToken(authToken);
     setCurrentScreen('principal-dashboard');
   };
 
@@ -117,7 +138,7 @@ export default function App() {
     if (currentScreen === 'teacher-login') {
       return (
         <TeacherLoginScreen
-          onLogin={handleTeacherLogin}
+          onLoginSuccess={handleTeacherLogin}
           onNavigateToSignUp={handleNavigateToTeacherSignUp}
           onNavigateToPasswordRecovery={handleNavigateToPasswordRecovery}
           onSwitchToAdminLogin={handleSwitchToAdminLogin}
@@ -141,10 +162,22 @@ export default function App() {
       );
     }
     if (currentScreen === 'teacher-dashboard' && userData) {
-      return <TeacherDashboard teacherName={userData.name} teacherEmail={userData.email} onLogout={handleLogout} />;
+      return (
+        <TeacherDashboard 
+          teacherName={userData.name} 
+          teacherEmail={userData.email} 
+          onLogout={handleLogout} 
+        />
+      );
     }
     if (currentScreen === 'principal-dashboard' && userData) {
-      return <PrincipalDashboard principalName={userData.name} principalEmail={userData.email} onLogout={handleLogout} />;
+      return (
+        <PrincipalDashboard 
+          principalName={userData.name} 
+          principalEmail={userData.email} 
+          onLogout={handleLogout} 
+        />
+      );
     }
     return <LoadingScreen />;
   };

@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
 import { Card } from '../../ui/card';
+import { Alert, AlertDescription } from '../../ui/alert';
 import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+
+const API_URL = 'http://localhost:5000/api';
 
 interface CreateTestScreenProps {
-  classId?: string;
+  classId: string;
   onBack: () => void;
+  onSuccess?: () => void;
 }
 
 interface MCQQuestion {
@@ -20,33 +23,18 @@ interface MCQQuestion {
   correctAnswer: number;
 }
 
-interface SegmentationQuestion {
-  id: string;
-  caseFile: File | null;
-  labelFile: File | null;
-  description: string;
-}
-
-export function CreateTestScreen({ classId, onBack }: CreateTestScreenProps) {
-  const [testType, setTestType] = useState<'mcq' | 'segmentation'>('mcq');
+export function CreateTestScreen({ classId, onBack, onSuccess }: CreateTestScreenProps) {
   const [testTitle, setTestTitle] = useState('');
   const [testDuration, setTestDuration] = useState('30');
   const [dueDate, setDueDate] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
 
-  // MCQ State
   const [mcqQuestions, setMcqQuestions] = useState<MCQQuestion[]>([{
     id: '1',
     question: '',
     options: ['', '', '', ''],
     correctAnswer: 0
-  }]);
-
-  // Segmentation State
-  const [segmentationQuestions, setSegmentationQuestions] = useState<SegmentationQuestion[]>([{
-    id: '1',
-    caseFile: null,
-    labelFile: null,
-    description: ''
   }]);
 
   const handleAddMCQQuestion = () => {
@@ -59,7 +47,9 @@ export function CreateTestScreen({ classId, onBack }: CreateTestScreenProps) {
   };
 
   const handleRemoveMCQQuestion = (id: string) => {
-    setMcqQuestions(mcqQuestions.filter(q => q.id !== id));
+    if (mcqQuestions.length > 1) {
+      setMcqQuestions(mcqQuestions.filter(q => q.id !== id));
+    }
   };
 
   const handleUpdateMCQQuestion = (id: string, field: string, value: any) => {
@@ -79,60 +69,108 @@ export function CreateTestScreen({ classId, onBack }: CreateTestScreenProps) {
     }));
   };
 
-  const handleAddSegmentationQuestion = () => {
-    setSegmentationQuestions([...segmentationQuestions, {
-      id: Date.now().toString(),
-      caseFile: null,
-      labelFile: null,
-      description: ''
-    }]);
+  const validateForm = () => {
+    if (!testTitle.trim()) {
+      setError('Please enter a test title');
+      return false;
+    }
+
+    if (!dueDate) {
+      setError('Please select a due date');
+      return false;
+    }
+
+    for (let i = 0; i < mcqQuestions.length; i++) {
+      const q = mcqQuestions[i];
+      if (!q.question.trim()) {
+        setError(`Question ${i + 1} is empty`);
+        return false;
+      }
+      if (q.options.some(opt => !opt.trim())) {
+        setError(`Question ${i + 1} has empty options`);
+        return false;
+      }
+    }
+
+    return true;
   };
 
-  const handleRemoveSegmentationQuestion = (id: string) => {
-    setSegmentationQuestions(segmentationQuestions.filter(q => q.id !== id));
-  };
+  const handleSaveTest = async () => {
+    if (!validateForm()) return;
 
-  const handleUpdateSegmentationQuestion = (id: string, field: string, value: any) => {
-    setSegmentationQuestions(segmentationQuestions.map(q => 
-      q.id === id ? { ...q, [field]: value } : q
-    ));
-  };
+    setCreating(true);
+    setError('');
 
-  const handleSaveTest = () => {
-    const testData = {
-      title: testTitle,
-      type: testType,
-      duration: testDuration,
-      dueDate,
-      questions: testType === 'mcq' ? mcqQuestions : segmentationQuestions,
-      classId
-    };
-    
-    console.log('Saving test:', testData);
-    // In a real app, this would make an API call
-    onBack();
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Prepare questions without id field
+      const questions = mcqQuestions.map(({ id, ...rest }) => rest);
+
+      const response = await fetch(`${API_URL}/tests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: testTitle,
+          type: 'mcq',
+          classId: classId,
+          duration: parseInt(testDuration),
+          dueDate: new Date(dueDate).toISOString(),
+          questions: questions
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (onSuccess) {
+          onSuccess();
+        }
+        onBack();
+      } else {
+        setError(data.message || 'Failed to create test');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Create test error:', err);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
-   <div className="h-full bg-blue-50 overflow-y-auto">
-  <div className="max-w-4xl mx-auto p-8">
-    {/* Header */}
-    <div className="bg-blue-600 text-white rounded-lg p-6 mb-6 shadow-md">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 hover:opacity-90 mb-2"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
-      <h1 className="text-2xl font-bold">Create New Assessment</h1>
-      <p className="text-blue-100 mt-1">Design a test for your students</p>
-    </div>
+    <div className="h-full bg-blue-50 overflow-y-auto">
+      <div className="max-w-4xl mx-auto p-8">
+        {/* Header */}
+        <div className="bg-blue-600 text-white rounded-lg p-6 mb-6 shadow-md">
+          <button
+            onClick={onBack}
+            disabled={creating}
+            className="flex items-center gap-2 hover:opacity-90 mb-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <h1 className="text-2xl font-bold">Create New Assessment</h1>
+          <p className="text-blue-100 mt-1">Design an MCQ test for your students</p>
+        </div>
 
-        {/* Basic Info */}
-         {/* Basic Info Card */}
-    <Card className="p-6 mb-6 border border-blue-200 bg-blue-50 shadow-sm">
-      <h3 className="text-blue-900 mb-4 font-semibold">Assessment Details</h3>
+        {/* Error Alert */}
+        {error && (
+          <Alert className="mb-6 bg-red-50 border-red-200">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-sm text-red-900">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Basic Info Card */}
+        <Card className="p-6 mb-6 border border-blue-200 bg-white shadow-sm">
+          <h3 className="text-blue-900 mb-4 font-semibold">Assessment Details</h3>
           <div className="space-y-4">
             <div>
               <Label htmlFor="test-title">Assessment Title</Label>
@@ -141,6 +179,7 @@ export function CreateTestScreen({ classId, onBack }: CreateTestScreenProps) {
                 placeholder="e.g., CT Scan Basics Quiz"
                 value={testTitle}
                 onChange={(e) => setTestTitle(e.target.value)}
+                disabled={creating}
                 className="mt-1.5"
               />
             </div>
@@ -154,6 +193,7 @@ export function CreateTestScreen({ classId, onBack }: CreateTestScreenProps) {
                   placeholder="30"
                   value={testDuration}
                   onChange={(e) => setTestDuration(e.target.value)}
+                  disabled={creating}
                   className="mt-1.5"
                 />
               </div>
@@ -161,195 +201,121 @@ export function CreateTestScreen({ classId, onBack }: CreateTestScreenProps) {
                 <Label htmlFor="due-date">Due Date</Label>
                 <Input
                   id="due-date"
-                  type="date"
+                  type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                  disabled={creating}
                   className="mt-1.5"
                 />
               </div>
             </div>
-
-            <div>
-              <Label>Assessment Type</Label>
-              <RadioGroup value={testType} onValueChange={(value: any) => setTestType(value)} className="flex gap-4 mt-2">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="mcq" id="mcq" />
-                  <Label htmlFor="mcq" className="cursor-pointer">Multiple Choice Questions</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="segmentation" id="segmentation" />
-                  <Label htmlFor="segmentation" className="cursor-pointer">Segmentation Task</Label>
-                </div>
-              </RadioGroup>
-            </div>
           </div>
         </Card>
 
-        {/* Questions */}
-<Card className="p-6 mb-6 border border-blue-200 bg-blue-50 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-blue-900 font-semibold">Questions</h3>
-        <Button
-          onClick={testType === 'mcq' ? handleAddMCQQuestion : handleAddSegmentationQuestion}
-          variant="outline"
-          size="sm"
-          className="border-blue-600 text-blue-600 hover:bg-blue-100"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Question
-        </Button>
-      </div>
+        {/* Questions Card */}
+        <Card className="p-6 mb-6 border border-blue-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-blue-900 font-semibold">Questions</h3>
+            <Button
+              onClick={handleAddMCQQuestion}
+              variant="outline"
+              size="sm"
+              disabled={creating}
+              className="border-blue-600 text-blue-600 hover:bg-blue-100"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Question
+            </Button>
+          </div>
 
-          {testType === 'mcq' ? (
-            <div className="space-y-6">
-              {mcqQuestions.map((q, index) => (
-                <Card key={q.id} className="p-4 border-blue-200">
-                  <div className="flex items-start justify-between mb-4">
-                    <h4 className="text-blue-900">Question {index + 1}</h4>
-                    {mcqQuestions.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMCQQuestion(q.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    )}
+          <div className="space-y-6">
+            {mcqQuestions.map((q, index) => (
+              <Card key={q.id} className="p-4 border-blue-200">
+                <div className="flex items-start justify-between mb-4">
+                  <h4 className="text-blue-900 font-medium">Question {index + 1}</h4>
+                  {mcqQuestions.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveMCQQuestion(q.id)}
+                      disabled={creating}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label>Question Text</Label>
+                    <Textarea
+                      placeholder="Enter your question..."
+                      value={q.question}
+                      onChange={(e) => handleUpdateMCQQuestion(q.id, 'question', e.target.value)}
+                      disabled={creating}
+                      className="mt-1.5"
+                    />
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Question Text</Label>
-                      <Textarea
-                        placeholder="Enter your question..."
-                        value={q.question}
-                        onChange={(e) => handleUpdateMCQQuestion(q.id, 'question', e.target.value)}
-                        className="mt-1.5"
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Options (Click radio button to mark as correct)</Label>
-                      <RadioGroup 
-                        value={q.correctAnswer.toString()} 
-                        onValueChange={(value) => handleUpdateMCQQuestion(q.id, 'correctAnswer', parseInt(value))}
-                        className="space-y-2 mt-2"
-                      >
-                        {q.options.map((option, optIndex) => (
-                          <div key={optIndex} className="flex items-center gap-3">
-                            <RadioGroupItem
-                              value={optIndex.toString()}
-                              id={`${q.id}-option-${optIndex}`}
-                            />
-                            <Input
-                              placeholder={`Option ${optIndex + 1}`}
-                              value={option}
-                              onChange={(e) => handleUpdateMCQOption(q.id, optIndex, e.target.value)}
-                              className="flex-1"
-                            />
-                            <Label htmlFor={`${q.id}-option-${optIndex}`} className="text-muted-foreground whitespace-nowrap">
-                              {q.correctAnswer === optIndex ? '(Correct)' : ''}
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {segmentationQuestions.map((q, index) => (
-                <Card key={q.id} className="p-4 border-blue-200">
-                  <div className="flex items-start justify-between mb-4">
-                    <h4 className="text-blue-900">Case {index + 1}</h4>
-                    {segmentationQuestions.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSegmentationQuestion(q.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Description</Label>
-                      <Textarea
-                        placeholder="e.g., Segment the liver in this CT scan"
-                        value={q.description}
-                        onChange={(e) => handleUpdateSegmentationQuestion(q.id, 'description', e.target.value)}
-                        className="mt-1.5"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor={`case-file-${q.id}`}>CT Scan File (.nii)</Label>
-                        <div className="mt-1.5">
-                          <label
-                            htmlFor={`case-file-${q.id}`}
-                            className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
-                          >
-                            <Upload className="w-4 h-4 text-blue-600" />
-                            <span className="text-blue-900">
-                              {q.caseFile ? q.caseFile.name : 'Upload .nii file'}
-                            </span>
-                            <input
-                              id={`case-file-${q.id}`}
-                              type="file"
-                              accept=".nii,.nii.gz"
-                              onChange={(e) => handleUpdateSegmentationQuestion(q.id, 'caseFile', e.target.files?.[0] || null)}
-                              className="hidden"
-                            />
-                          </label>
+                  <div>
+                    <Label>Options (Click radio button to mark as correct)</Label>
+                    <RadioGroup 
+                      value={q.correctAnswer.toString()} 
+                      onValueChange={(value) => handleUpdateMCQQuestion(q.id, 'correctAnswer', parseInt(value))}
+                      className="space-y-2 mt-2"
+                      disabled={creating}
+                    >
+                      {q.options.map((option, optIndex) => (
+                        <div key={optIndex} className="flex items-center gap-3">
+                          <RadioGroupItem
+                            value={optIndex.toString()}
+                            id={`${q.id}-option-${optIndex}`}
+                            disabled={creating}
+                          />
+                          <Input
+                            placeholder={`Option ${optIndex + 1}`}
+                            value={option}
+                            onChange={(e) => handleUpdateMCQOption(q.id, optIndex, e.target.value)}
+                            disabled={creating}
+                            className="flex-1"
+                          />
+                          <Label htmlFor={`${q.id}-option-${optIndex}`} className="text-gray-500 whitespace-nowrap min-w-[80px]">
+                            {q.correctAnswer === optIndex ? '✓ Correct' : ''}
+                          </Label>
                         </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor={`label-file-${q.id}`}>Ground Truth Label (.nii)</Label>
-                        <div className="mt-1.5">
-                          <label
-                            htmlFor={`label-file-${q.id}`}
-                            className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
-                          >
-                            <Upload className="w-4 h-4 text-blue-600" />
-                            <span className="text-blue-900">
-                              {q.labelFile ? q.labelFile.name : 'Upload label file'}
-                            </span>
-                            <input
-                              id={`label-file-${q.id}`}
-                              type="file"
-                              accept=".nii,.nii.gz"
-                              onChange={(e) => handleUpdateSegmentationQuestion(q.id, 'labelFile', e.target.files?.[0] || null)}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
+                      ))}
+                    </RadioGroup>
                   </div>
-                </Card>
-              ))}
-            </div>
-          )}
+                </div>
+              </Card>
+            ))}
+          </div>
         </Card>
 
         {/* Actions */}
         <div className="flex gap-3">
-      <Button variant="outline" onClick={onBack} className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-100">
-        Cancel
-      </Button>
-      <Button
-        onClick={handleSaveTest}
-        disabled={!testTitle.trim()}
-        className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
-      >
-        Create Assessment
-      </Button>
+          <Button 
+            variant="outline" 
+            onClick={onBack} 
+            disabled={creating}
+            className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-100"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveTest}
+            disabled={!testTitle.trim() || creating}
+            className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+          >
+            {creating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Assessment'
+            )}
+          </Button>
         </div>
       </div>
     </div>
