@@ -25,6 +25,7 @@ export function FilesTab({ classId }: FilesTabProps) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     fetchFiles();
@@ -53,45 +54,65 @@ export function FilesTab({ classId }: FilesTabProps) {
   const handleUploadFile = async (file: File) => {
     setUploading(true);
     setError('');
+    setUploadProgress(0);
 
     try {
-      // In a real app, you would upload to cloud storage first
-      // For now, we'll just send file metadata
-      const fileUrl = `https://storage.example.com/${file.name}`;
-      const fileSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append('file', file);
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/classes/${classId}/files`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: file.name,
-          type: uploadType,
-          url: fileUrl,
-          size: fileSize
-        })
+      
+      // Use XMLHttpRequest for upload progress
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete);
+        }
       });
 
-      const data = await response.json();
+      // Handle completion
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 201) {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            setFiles([data.data, ...files]);
+            setShowUploadDialog(false);
+            setUploadProgress(0);
+          } else {
+            setError(data.message || 'Failed to upload file');
+          }
+        } else {
+          const data = JSON.parse(xhr.responseText);
+          setError(data.message || 'Failed to upload file');
+        }
+        setUploading(false);
+      });
 
-      if (data.success) {
-        setFiles([data.data, ...files]);
-        setShowUploadDialog(false);
-      } else {
-        setError(data.message || 'Failed to upload file');
-      }
+      // Handle errors
+      xhr.addEventListener('error', () => {
+        setError('Network error. Please try again.');
+        setUploading(false);
+      });
+
+      // Send request
+      xhr.open('POST', `${API_URL}/classes/${classId}/files`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+
     } catch (err) {
       setError('Network error. Please try again.');
       console.error('Upload file error:', err);
-    } finally {
       setUploading(false);
     }
   };
 
   const handleDeleteFile = async (fileId: string) => {
+    if (!confirm('Are you sure you want to delete this file?')) return;
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/classes/${classId}/files/${fileId}`, {
@@ -105,9 +126,12 @@ export function FilesTab({ classId }: FilesTabProps) {
 
       if (data.success) {
         setFiles(files.filter(f => f._id !== fileId));
+      } else {
+        alert(data.message || 'Failed to delete file');
       }
     } catch (err) {
       console.error('Delete file error:', err);
+      alert('Failed to delete file');
     }
   };
 
@@ -122,9 +146,8 @@ export function FilesTab({ classId }: FilesTabProps) {
         }
       });
 
-      // In a real app, trigger actual download
-      // window.open(url, '_blank');
-      alert(`Download started: ${name}`);
+      // Open file in new tab
+      window.open(url, '_blank');
       
       // Update local state
       setFiles(files.map(f => 
@@ -202,14 +225,19 @@ export function FilesTab({ classId }: FilesTabProps) {
                       <Download className="w-4 h-4 mr-2" />
                       Download
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDeleteFile(file._id)}>
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteFile(file._id)}
+                      className="text-red-600"
+                    >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <h4 className="text-blue-900 mb-2 truncate font-medium">{file.name}</h4>
+              <h4 className="text-blue-900 mb-2 truncate font-medium" title={file.name}>
+                {file.name}
+              </h4>
               <div className="space-y-1 text-gray-500 text-sm">
                 <p>{file.size}</p>
                 <p>Uploaded: {new Date(file.uploadedAt).toLocaleDateString()}</p>
@@ -258,7 +286,14 @@ export function FilesTab({ classId }: FilesTabProps) {
                   }
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleUploadFile(file);
+                    if (file) {
+                      // Check file size (100MB limit)
+                      if (file.size > 100 * 1024 * 1024) {
+                        setError('File size must be less than 100MB');
+                        return;
+                      }
+                      handleUploadFile(file);
+                    }
                   }}
                   disabled={uploading}
                   className="hidden"
@@ -272,7 +307,7 @@ export function FilesTab({ classId }: FilesTabProps) {
                   {uploading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Uploading...
+                      Uploading... {uploadProgress}%
                     </>
                   ) : (
                     <>
@@ -282,6 +317,17 @@ export function FilesTab({ classId }: FilesTabProps) {
                   )}
                 </label>
               </div>
+              
+              {uploading && (
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
