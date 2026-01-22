@@ -12,7 +12,7 @@ import {
 import { Button } from '../ui/button';
 import { TeacherApprovalScreen } from './principal/TeacherApprovalScreen';
 import { TeacherManagementScreen } from './principal/TeacherManagementScreen';
-import { StudentPerformanceScreen } from './principal/StudentPerformanceScreen';
+import { AllStudentsScreen } from './principal/AllStudentsScreen';
 import { AnalyticsScreen } from './principal/AnalyticsScreen';
 import { DashboardOverview } from './principal/DashboardOverview';
 
@@ -26,7 +26,7 @@ type Screen =
   | { type: 'overview' }
   | { type: 'teacher-approval' }
   | { type: 'teacher-management' }
-  | { type: 'student-performance' }
+  | { type: 'student-management' }
   | { type: 'analytics' };
 
 export function PrincipalDashboard({ principalName, principalEmail, onLogout }: PrincipalDashboardProps) {
@@ -40,8 +40,8 @@ export function PrincipalDashboard({ principalName, principalEmail, onLogout }: 
         return <TeacherApprovalScreen />;
       case 'teacher-management':
         return <TeacherManagementScreen />;
-      case 'student-performance':
-        return <StudentPerformanceScreen />;
+      case 'student-management':
+        return <AllStudentsScreen />;
       case 'analytics':
         return <AnalyticsScreen />;
       default:
@@ -96,17 +96,17 @@ export function PrincipalDashboard({ principalName, principalEmail, onLogout }: 
             onClick={() => setScreen({ type: 'teacher-management' })}
           >
             <Users className="w-4 h-4 mr-3" />
-            All Teachers
+            Teachers Management
           </Button>
           <Button
-            variant={screen.type === 'student-performance' ? 'default' : 'ghost'}
+            variant={screen.type === 'student-management' ? 'default' : 'ghost'}
             className={`w-full justify-start ${
-              screen.type === 'student-performance' ? 'bg-blue-600 text-white' : 'text-blue-900'
+              screen.type === 'student-management' ? 'bg-blue-600 text-white' : 'text-blue-900'
             }`}
-            onClick={() => setScreen({ type: 'student-performance' })}
+            onClick={() => setScreen({ type: 'student-management' })}
           >
             <BarChart3 className="w-4 h-4 mr-3" />
-            Student Performance
+            Student Management
           </Button>
           <Button
             variant={screen.type === 'analytics' ? 'default' : 'ghost'}
