@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus, Upload, FileText, Users, ClipboardList, MessageSquare } from 'lucide-react';
-import { Button } from '../../ui/button';
+import { ArrowLeft, FileText, Users, ClipboardList, MessageSquare, Video } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { PostsTab } from './class-tabs/PostsTab';
 import { FilesTab } from './class-tabs/FilesTab';
 import { TestsTab } from './class-tabs/TestsTab';
+import { LiveClassRoom } from './liveClassRoom';
 
 interface TeacherClassDetailScreenProps {
   classId: string;
@@ -14,6 +14,9 @@ interface TeacherClassDetailScreenProps {
 
 export function TeacherClassDetailScreen({ classId, onBack, onCreateTest }: TeacherClassDetailScreenProps) {
   const [activeTab, setActiveTab] = useState('posts');
+  const [showLiveClass, setShowLiveClass] = useState(false);
+
+  const authToken = localStorage.getItem('token') || '';
 
   // Mock class data
   const classData = {
@@ -22,7 +25,7 @@ export function TeacherClassDetailScreen({ classId, onBack, onCreateTest }: Teac
     code: 'RAD2024A',
     description: 'Introduction to radiology imaging and CT scan interpretation',
     students: 32,
-    teacher: 'Dr. Tahir Mustafa'
+    teacher: 'Dr. Tahir Mustafa',
   };
 
   return (
@@ -47,9 +50,22 @@ export function TeacherClassDetailScreen({ classId, onBack, onCreateTest }: Teac
                   {classData.students} students
                 </span>
                 <span>•</span>
-                <span>Class Code: <code className="bg-white/20 px-2 py-1 rounded">{classData.code}</code></span>
+                <span>
+                  Class Code:{' '}
+                  <code className="bg-white/20 px-2 py-1 rounded">{classData.code}</code>
+                </span>
               </div>
             </div>
+
+            {/* Live Class Button */}
+            <button
+              onClick={() => setShowLiveClass(true)}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-medium text-sm transition-colors"
+            >
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <Video className="w-4 h-4" />
+              Start Live Class
+            </button>
           </div>
         </div>
       </div>
@@ -75,16 +91,26 @@ export function TeacherClassDetailScreen({ classId, onBack, onCreateTest }: Teac
           <TabsContent value="posts" className="m-0 p-6">
             <PostsTab classId={classId} />
           </TabsContent>
-          
+
           <TabsContent value="files" className="m-0 p-6">
             <FilesTab classId={classId} />
           </TabsContent>
-          
+
           <TabsContent value="tests" className="m-0 p-6">
             <TestsTab classId={classId} onCreateTest={onCreateTest} />
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Live Class Room Overlay */}
+      {showLiveClass && (
+        <LiveClassRoom
+          classId={classId}
+          teacherName={classData.teacher}
+          token={authToken}
+          onClose={() => setShowLiveClass(false)}
+        />
+      )}
     </div>
   );
 }
