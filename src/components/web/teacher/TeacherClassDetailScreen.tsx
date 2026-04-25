@@ -1,35 +1,78 @@
-import { useState } from 'react';
-import { ArrowLeft, FileText, Users, ClipboardList, MessageSquare, Video } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, FileText, Users, ClipboardList, MessageSquare, Video, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { PostsTab } from './class-tabs/PostsTab';
 import { FilesTab } from './class-tabs/FilesTab';
 import { TestsTab } from './class-tabs/TestsTab';
 import { LiveClassRoom } from './liveClassRoom';
 
+const API_URL = 'http://localhost:5000/api';
+
+interface ClassData {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  students: number;
+  teacher: string;
+}
+
 interface TeacherClassDetailScreenProps {
   classId: string;
   onBack: () => void;
   onCreateTest: () => void;
+  teacherName?: string;
 }
 
-export function TeacherClassDetailScreen({ classId, onBack, onCreateTest }: TeacherClassDetailScreenProps) {
+export function TeacherClassDetailScreen({ classId, onBack, onCreateTest, teacherName }: TeacherClassDetailScreenProps) {
   const [activeTab, setActiveTab] = useState('posts');
   const [showLiveClass, setShowLiveClass] = useState(false);
+  const [classData, setClassData] = useState<ClassData | null>(null);
+  const [loadingClass, setLoadingClass] = useState(true);
 
   const authToken = localStorage.getItem('token') || '';
 
-  // Mock class data
-  const classData = {
-    id: classId,
-    name: 'Radiology Initial',
-    code: 'RAD2024A',
-    description: 'Introduction to radiology imaging and CT scan interpretation',
-    students: 32,
-    teacher: 'Dr. Tahir Mustafa',
-  };
+  useEffect(() => {
+    const fetchClassData = async () => {
+      try {
+        const res = await fetch(`${API_URL}/classes/${classId}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          const c = data.data;
+          setClassData({
+            id: c._id || classId,
+            name: c.name || 'Untitled Class',
+            code: c.code || c.classCode || '—',
+            description: c.description || '',
+            students: c.students?.length ?? c.studentCount ?? 0,
+            teacher: c.teacher?.name || teacherName || 'Teacher',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch class details:', err);
+      } finally {
+        setLoadingClass(false);
+      }
+    };
+    fetchClassData();
+  }, [classId, authToken, teacherName]);
 
   return (
     <div className="h-full flex flex-col bg-white">
+      {/* Loading State */}
+      {loadingClass ? (
+        <div className="flex items-center justify-center flex-1">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      ) : !classData ? (
+        <div className="flex flex-col items-center justify-center flex-1 text-gray-500">
+          <p>Failed to load class details.</p>
+          <button onClick={onBack} className="mt-4 text-blue-600 hover:underline">← Go back</button>
+        </div>
+      ) : (
+      <>
       {/* Header */}
       <div className="border-b border-blue-100 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
         <div className="p-6">
@@ -106,10 +149,12 @@ export function TeacherClassDetailScreen({ classId, onBack, onCreateTest }: Teac
       {showLiveClass && (
         <LiveClassRoom
           classId={classId}
-          teacherName={classData.teacher}
+          teacherName={teacherName || classData.teacher}
           token={authToken}
           onClose={() => setShowLiveClass(false)}
         />
+      )}
+      </>
       )}
     </div>
   );

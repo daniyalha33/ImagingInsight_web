@@ -1,18 +1,30 @@
 "use client";
 
 import * as React from "react";
-import useEmblaCarousel, {
-  type UseEmblaCarouselType,
-} from "embla-carousel-react@8.6.0";
-import { ArrowLeft, ArrowRight } from "lucide-react@0.487.0";
+import useEmblaCarousel from "embla-carousel-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cn } from "./utils";
 import { Button } from "./button";
 
-type CarouselApi = UseEmblaCarouselType[1];
-type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
-type CarouselOptions = UseCarouselParameters[0];
-type CarouselPlugin = UseCarouselParameters[1];
+// Local permissive types to avoid depending on embla package types during local dev.
+// `CarouselOptions` is an open object with an optional `axis` property used below.
+type CarouselOptions = { axis?: "x" | "y" } & Record<string, any>;
+type CarouselPlugin = any;
+
+type EmblaApi = {
+  scrollPrev: () => void;
+  scrollNext: () => void;
+  canScrollPrev: () => boolean;
+  canScrollNext: () => boolean;
+  on: (event: string, cb: (...args: any[]) => void) => void;
+  off: (event: string, cb: (...args: any[]) => void) => void;
+} | null;
+
+type UseEmblaCarouselType = [(node: HTMLElement | null) => void, EmblaApi];
+
+type CarouselApi = EmblaApi;
+// Use local CarouselOptions/CarouselPlugin types defined above
 
 type CarouselProps = {
   opts?: CarouselOptions;

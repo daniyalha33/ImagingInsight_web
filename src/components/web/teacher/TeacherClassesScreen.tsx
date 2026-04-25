@@ -12,10 +12,9 @@ const API_URL = 'http://localhost:5000/api';
 
 interface TeacherClassesScreenProps {
   onSelectClass: (classId: string) => void;
-  teacherName: string;
 }
 
-export function TeacherClassesScreen({ onSelectClass, teacherName }: TeacherClassesScreenProps) {
+export function TeacherClassesScreen({ onSelectClass }: TeacherClassesScreenProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [className, setClassName] = useState('');
   const [classDescription, setClassDescription] = useState('');

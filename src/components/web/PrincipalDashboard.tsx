@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { 
   Users, 
   BarChart3, 
-  TrendingUp, 
   Brain,
   LogOut,
   Home,
@@ -20,6 +19,7 @@ interface PrincipalDashboardProps {
   principalName: string;
   principalEmail: string;
   onLogout?: () => void;
+  onOpenRag?: () => void;
 }
 
 type Screen = 
@@ -29,7 +29,7 @@ type Screen =
   | { type: 'student-management' }
   | { type: 'analytics' };
 
-export function PrincipalDashboard({ principalName, principalEmail, onLogout }: PrincipalDashboardProps) {
+export function PrincipalDashboard({ principalName, principalEmail, onLogout, onOpenRag }: PrincipalDashboardProps) {
   const [screen, setScreen] = useState<Screen>({ type: 'overview' });
 
   const renderScreen = () => {
@@ -117,6 +117,14 @@ export function PrincipalDashboard({ principalName, principalEmail, onLogout }: 
           >
             <Brain className="w-4 h-4 mr-3" />
             AI Analytics
+          </Button>
+          <Button
+            variant="ghost"
+            className={`w-full justify-start text-blue-900`}
+            onClick={() => onOpenRag?.()}
+          >
+            <Brain className="w-4 h-4 mr-3" />
+            RAG Assistant
           </Button>
         </nav>
 

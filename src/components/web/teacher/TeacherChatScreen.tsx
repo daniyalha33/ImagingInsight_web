@@ -25,7 +25,7 @@ interface Message {
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-export function TeacherChatScreen() {
+export function TeacherChatScreen({ teacherName }: { teacherName?: string }) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -203,7 +203,10 @@ export function TeacherChatScreen() {
       <div className="w-80 border-r border-blue-200 bg-white flex flex-col">
         <div className="p-4 border-b border-blue-200">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-blue-600 text-lg font-semibold">Student Queries</h3>
+            <div>
+              <h3 className="text-blue-600 text-lg font-semibold">Student Queries</h3>
+              {teacherName && <p className="text-xs text-blue-400">Signed in as {teacherName}</p>}
+            </div>
             <button
               onClick={fetchChatList}
               className="p-1 hover:bg-blue-50 rounded"

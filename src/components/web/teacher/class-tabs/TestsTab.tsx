@@ -28,16 +28,49 @@ export function TestsTab({ classId, onCreateTest }: TestsTabProps) {
   const fetchTests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/tests/class/${classId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [mcqRes, segRes] = await Promise.all([
+        fetch(`${API_URL}/tests/class/${classId}`, { headers }),
+        fetch(`${API_URL}/segmentation-tests/class/${classId}`, { headers }),
+      ]);
+
+      const mcqData = await mcqRes.json().catch(() => ({}));
+      const segData = await segRes.json().catch(() => ({}));
+
+      // Normalize MCQ tests
+      const mcqTests = (mcqData?.data || []).map((t: any) => ({
+        ...t,
+        type: t.type || 'mcq',
+        submissionCount: t.submissionCount || t.submissions?.length || 0,
+      }));
+
+      // Normalize segmentation tests — count submissions across all cases
+      const segTests = (segData?.data || []).map((t: any) => {
+        let submissionCount = 0;
+        if (t.submissions) {
+          submissionCount = Array.isArray(t.submissions) ? t.submissions.length : 0;
+        } else if (t.segmentationCases) {
+          // If backend returns cases with submissions, count those
+          submissionCount = t.segmentationCases.reduce(
+            (sum: number, c: any) => sum + ((c.submissions?.length) || 0),
+            0
+          );
         }
+        return {
+          ...t,
+          type: 'segmentation',
+          submissionCount,
+        };
       });
 
-      const data = await response.json();
-      if (data.success) {
-        setTests(data.data);
-      }
+      const allTests = [...mcqTests, ...segTests].sort((a: any, b: any) => {
+        const da = new Date(a.createdAt || a.created_at || 0).getTime();
+        const db = new Date(b.createdAt || b.created_at || 0).getTime();
+        return db - da;
+      });
+
+      setTests(allTests);
     } catch (err) {
       console.error('Error fetching tests:', err);
     } finally {
@@ -88,7 +121,9 @@ export function TestsTab({ classId, onCreateTest }: TestsTabProps) {
   };
 
   const getTypeColor = (type: string) => {
-    return type === 'mcq' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600';
+    if (type === 'mcq') return 'bg-blue-100 text-blue-600';
+    if (type === 'segmentation') return 'bg-purple-100 text-purple-700';
+    return 'bg-gray-100 text-gray-600';
   };
 
   const getStatusColor = (status: string) => {
@@ -158,9 +193,13 @@ export function TestsTab({ classId, onCreateTest }: TestsTabProps) {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div>
-                      <p className="text-gray-500 text-sm">Questions</p>
+                      <p className="text-gray-500 text-sm">
+                        {test.type === 'segmentation' ? 'Cases' : 'Questions'}
+                      </p>
                       <p className="text-gray-900 font-medium">
-                        {test.questions?.length || 0}
+                        {test.type === 'segmentation'
+                          ? test.segmentationCases?.length || 0
+                          : test.questions?.length || 0}
                       </p>
                     </div>
                     <div>

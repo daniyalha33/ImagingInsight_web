@@ -6,8 +6,10 @@ import { AdminLoginScreen } from './components/AdminLoginScreen';
 import { TeacherDashboard } from './components/web/TeacherDashboard';
 import { PrincipalDashboard } from './components/web/PrincipalDashboard';
 import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
+import { ResetPasswordScreen } from "./components/ResetPasswordScreen";
+import { RagScreen } from './components/web/RagScreen';
 
-type Screen = 'loading' | 'teacher-login' | 'teacher-signup' | 'admin-login' | 'password-recovery' | 'teacher-dashboard' | 'principal-dashboard';
+type Screen = 'loading' | 'teacher-login' | 'teacher-signup' | 'admin-login' | 'password-recovery' | 'reset-password' | 'teacher-dashboard' | 'principal-dashboard' | 'rag';
 
 interface UserData {
   id: string;
@@ -22,11 +24,22 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('loading');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [token, setToken] = useState<string>('');
+  const [resetToken, setResetToken] = useState<string>('');
 
   useEffect(() => {
     window.addEventListener('resize', () => { });
     return () => window.removeEventListener('resize', () => { });
   }, []);
+
+  // Check if we're accessing the reset-password page from email link
+  useEffect(() => {
+  const path = window.location.pathname;
+  const match = path.match(/\/reset-password\/(.+)/);
+  if (match && match[1]) {
+    setResetToken(match[1]);
+    setCurrentScreen('reset-password');
+  }
+}, []);
 
   useEffect(() => {
     if (currentScreen === 'loading') {
@@ -61,23 +74,9 @@ export default function App() {
     }
   }, [currentScreen]);
 
-  const handleSendResetLink = (email: string) => {
-    alert("A password reset link has been sent to: " + email);
-    setCurrentScreen("teacher-login");
-  };
-
   const handleBackToLogin = () => {
     setCurrentScreen("teacher-login");
   };
-
-  if (currentScreen === 'password-recovery') {
-    return (
-      <PasswordRecoveryScreen
-        onSendResetLink={handleSendResetLink}
-        onBackToLogin={handleBackToLogin}
-      />
-    );
-  }
 
   const handleLogout = () => {
     // Clear localStorage
@@ -161,12 +160,33 @@ export default function App() {
         />
       );
     }
+    if (currentScreen === 'password-recovery') {
+      return (
+        <PasswordRecoveryScreen
+          onBackToLogin={handleBackToLogin}
+        />
+      );
+    }
+    if (currentScreen === 'reset-password' && resetToken) {
+      return (
+        <ResetPasswordScreen
+          resetToken={resetToken}
+          onSuccess={(authToken) => {
+            setToken(authToken);
+            localStorage.setItem('token', authToken);
+            setCurrentScreen('teacher-login');
+          }}
+          onBackToLogin={handleBackToLogin}
+        />
+      );
+    }
     if (currentScreen === 'teacher-dashboard' && userData) {
       return (
         <TeacherDashboard 
           teacherName={userData.name} 
           teacherEmail={userData.email} 
           onLogout={handleLogout} 
+          onOpenRag={() => setCurrentScreen('rag')}
         />
       );
     }
@@ -176,8 +196,12 @@ export default function App() {
           principalName={userData.name} 
           principalEmail={userData.email} 
           onLogout={handleLogout} 
+          onOpenRag={() => setCurrentScreen('rag')}
         />
       );
+    }
+    if (currentScreen === 'rag') {
+      return <RagScreen token={token} onBack={() => setCurrentScreen(userData?.role === 'admin' ? 'principal-dashboard' : 'teacher-dashboard')} />;
     }
     return <LoadingScreen />;
   };
@@ -185,9 +209,12 @@ export default function App() {
   const shouldShowWebView =
     currentScreen === 'teacher-dashboard' ||
     currentScreen === 'principal-dashboard' ||
+    currentScreen === 'rag' ||
     currentScreen === 'teacher-login' ||
     currentScreen === 'teacher-signup' ||
-    currentScreen === 'admin-login';
+    currentScreen === 'admin-login' ||
+    currentScreen === 'password-recovery' ||
+    currentScreen === 'reset-password';
 
   return (
     <div className={shouldShowWebView ? "min-h-screen bg-gradient-to-br from-blue-50 to-white" : "min-h-screen bg-slate-900 flex items-center justify-center p-4"}>

@@ -4,18 +4,21 @@ import {
   MessageSquare, 
   LogOut,
   Home,
-  ClipboardList
+  ClipboardList,
+  Search,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { TeacherClassesScreen } from './teacher/TeacherClassesScreen';
 import { TeacherClassDetailScreen } from './teacher/TeacherClassDetailScreen';
 import { TeacherChatScreen } from './teacher/TeacherChatScreen';
 import { CreateTestScreen } from './teacher/CreateTestScreen';
+import { CreateSegmentationTestScreen } from './teacher/Createsegmentationscreen';
 
 interface TeacherDashboardProps {
   teacherName: string;
   teacherEmail: string;
   onLogout?: () => void;
+  onOpenRag?: () => void;
 }
 
 type Screen = 
@@ -24,8 +27,9 @@ type Screen =
   | { type: 'chat' }
   | { type: 'create-test'; classId?: string };
 
-export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: TeacherDashboardProps) {
+export function TeacherDashboard({ teacherName, teacherEmail, onLogout, onOpenRag }: TeacherDashboardProps) {
   const [screen, setScreen] = useState<Screen>({ type: 'classes' });
+  const [createType, setCreateType] = useState<'mcq' | 'segmentation' | null>(null);
 
   const handleTestCreated = () => {
     // After test is created, go back to class detail
@@ -42,7 +46,6 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
         return (
           <TeacherClassesScreen
             onSelectClass={(classId) => setScreen({ type: 'class-detail', classId })}
-            teacherName={teacherName}
           />
         );
       case 'class-detail':
@@ -51,6 +54,7 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
             classId={screen.classId}
             onBack={() => setScreen({ type: 'classes' })}
             onCreateTest={() => setScreen({ type: 'create-test', classId: screen.classId })}
+            teacherName={teacherName}
           />
         );
       case 'chat':
@@ -60,14 +64,46 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
           />
         );
       case 'create-test':
-        return (
+        // Allow teacher to choose between MCQ and Segmentation tests
+        if (!createType) {
+          return (
+            <div className="p-8">
+              <div className="max-w-2xl mx-auto bg-white rounded-lg p-8 shadow">
+                <h2 className="text-xl font-semibold mb-4">Create Assessment</h2>
+                <p className="text-sm text-gray-600 mb-6">Choose the type of assessment to create for this class.</p>
+                <div className="flex gap-3">
+                  <Button className="flex-1 bg-blue-600 text-white" onClick={() => setCreateType('mcq')}>Multiple Choice (MCQ)</Button>
+                  <Button className="flex-1 bg-green-600 text-white" onClick={() => setCreateType('segmentation')}>Segmentation Task</Button>
+                </div>
+                <div className="mt-4">
+                  <Button variant="ghost" onClick={() => {
+                    // go back to previous screen
+                    if (screen.classId) setScreen({ type: 'class-detail', classId: screen.classId }); else setScreen({ type: 'classes' });
+                  }}>Cancel</Button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Render selected creation screen
+        return createType === 'mcq' ? (
           <CreateTestScreen
             classId={screen.classId || ''}
-            onBack={() => screen.classId 
-              ? setScreen({ type: 'class-detail', classId: screen.classId })
-              : setScreen({ type: 'classes' })
-            }
-            onSuccess={handleTestCreated}
+            onBack={() => {
+              setCreateType(null);
+              if (screen.classId) setScreen({ type: 'class-detail', classId: screen.classId }); else setScreen({ type: 'classes' });
+            }}
+            onSuccess={() => { setCreateType(null); handleTestCreated(); }}
+          />
+        ) : (
+          <CreateSegmentationTestScreen
+            classId={screen.classId || ''}
+            onBack={() => {
+              setCreateType(null);
+              if (screen.classId) setScreen({ type: 'class-detail', classId: screen.classId }); else setScreen({ type: 'classes' });
+            }}
+            onSuccess={() => { setCreateType(null); handleTestCreated(); }}
           />
         );
       default:
@@ -123,6 +159,14 @@ export function TeacherDashboard({ teacherName, teacherEmail, onLogout }: Teache
           >
             <ClipboardList className="w-4 h-4 mr-3" />
             Create Assessment
+          </Button>
+          <Button
+            variant="ghost"
+            className={`w-full justify-start text-blue-900 hover:bg-blue-50`}
+            onClick={() => onOpenRag?.()}
+          >
+            <Search className="w-4 h-4 mr-3" />
+            RAG Assistant
           </Button>
         </nav>
 
